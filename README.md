@@ -2,6 +2,8 @@
 
 **A read-only spend monitor and kill-switch for autonomous agents paying over [x402](https://x402.org).**
 
+> **Live demo:** [x402.musicailab.com](https://x402.musicailab.com) — watch an autonomous agent buy data/inference/RPC across merchants, spend climb against a cap, an over-cap purchase get auto-blocked, and the kill-switch halt clearance mid-stream. Settlement is simulated so it runs 24/7 anywhere; the trust layer (clearance, caps, flags, halt) is fully real.
+
 When an agent can settle value on its own — paying per call for data, inference, RPC, or signals over x402 — the missing piece isn't the rail. Coinbase, the x402 Foundation, and the Solana facilitators have the rail. The missing piece is the thing a human keeps *next to* the agent: a live view of what it's spending, a policy it can't exceed, and a switch that stops it. x402-watch is that layer.
 
 It never holds keys and never signs. It sits beside the agent, observes every payment's lifecycle, clears or denies each one against a spend policy, and gives a person a single button to halt all settlement. Read-only by design — the same discipline as [Conductor](https://github.com/yksanjo/conductor), pointed at money instead of code.

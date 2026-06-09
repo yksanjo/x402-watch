@@ -1,0 +1,66 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><style>
+  :root{
+    --ink:#0c0f14; --panel:#141922; --line:#232c3b; --txt:#e7ecf3;
+    --dim:#8a97a9; --faint:#5b6678; --money:#f2a23c; --ok:#36c6a0; --stop:#f2545b;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,monospace;
+    --sans:ui-sans-serif,system-ui,"Segoe UI",Inter,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  .card{width:1200px;height:675px;background:var(--ink);color:var(--txt);
+    font-family:var(--sans);position:relative;overflow:hidden;
+    padding:54px 60px;display:flex;flex-direction:column}
+  .card::before{content:"";position:absolute;inset:0;
+    background:radial-gradient(1100px 500px at 80% -10%, rgba(242,84,91,.10), transparent 60%);}
+  .top{display:flex;justify-content:space-between;align-items:flex-start;z-index:1}
+  .brand{font-family:var(--mono);font-size:22px;letter-spacing:.5px}
+  .brand b{color:var(--money)}
+  .sub{color:var(--faint);font-family:var(--mono);font-size:13px;letter-spacing:2px;margin-top:6px}
+  .kill{font-family:var(--mono);font-size:15px;border:1px solid var(--stop);color:var(--stop);
+    border-radius:8px;padding:8px 16px;background:rgba(242,84,91,.08);letter-spacing:1px}
+  .mid{flex:1;display:flex;flex-direction:column;justify-content:center;z-index:1}
+  .line1{color:var(--dim);font-size:30px;font-weight:500;margin-bottom:18px}
+  .alert{display:flex;align-items:center;gap:22px;background:var(--panel);
+    border:1px solid var(--line);border-left:5px solid var(--stop);
+    border-radius:14px;padding:26px 30px}
+  .alert .amt{font-family:var(--mono);font-size:58px;font-weight:700;color:var(--money);line-height:1}
+  .alert .who{font-family:var(--mono);font-size:17px;color:var(--dim);margin-top:8px}
+  .alert .who span{color:var(--stop)}
+  .badge{margin-left:auto;font-family:var(--mono);font-size:22px;font-weight:700;
+    color:var(--stop);border:2px solid var(--stop);border-radius:10px;
+    padding:14px 22px;letter-spacing:2px;background:rgba(242,84,91,.10)}
+  .line2{font-size:34px;font-weight:700;margin-top:34px;line-height:1.25}
+  .line2 .g{color:var(--ok)}
+  .foot{z-index:1;color:var(--faint);font-family:var(--mono);font-size:15px;
+    letter-spacing:.4px;border-top:1px solid var(--line);padding-top:18px;
+    display:flex;justify-content:space-between}
+  .foot .url{color:var(--money)}
+</style></head>
+<body>
+  <div class="card">
+    <div class="top">
+      <div>
+        <div class="brand"><b>x402</b>-watch</div>
+        <div class="sub">AGENT SPEND CONTROL PLANE</div>
+      </div>
+      <div class="kill">● ARMED</div>
+    </div>
+
+    <div class="mid">
+      <div class="line1">you gave the agent a wallet and walked away.</div>
+      <div class="alert">
+        <div>
+          <div class="amt">$9,999.00</div>
+          <div class="who">GET /whale/positions · <span>premium.alpha-leak.xyz</span></div>
+        </div>
+        <div class="badge">🪤 BLOCKED</div>
+      </div>
+      <div class="line2">it never holds your keys. it just <span class="g">sees every payment,<br>caps it, and stops it</span> before the agent signs.</div>
+    </div>
+
+    <div class="foot">
+      <div>read-only · never signs · out of the payment path</div>
+      <div class="url">x402.musicailab.com</div>
+    </div>
+  </div>
+</body></html>
