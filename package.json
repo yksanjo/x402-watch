@@ -1,0 +1,23 @@
+{
+  "name": "x402-watch",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Read-only spend monitor and kill-switch for autonomous agents paying over x402.",
+  "scripts": {
+    "monitor": "node src/monitor.js",
+    "agent": "node src/agent.js",
+    "merchant": "node src/resource-server.js",
+    "demo": "node src/agent.js"
+  },
+  "dependencies": {
+    "express": "^4.22.2"
+  },
+  "optionalDependencies": {
+    "@solana/web3.js": "^1.95.0",
+    "@x402/core": "^2.14.0",
+    "@x402/express": "^2.14.0",
+    "@x402/fetch": "^2.14.0",
+    "@x402/svm": "^2.14.0"
+  },
+  "license": "MIT"
+}

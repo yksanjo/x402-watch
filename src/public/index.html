@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>x402-watch · agent spend control plane</title>
+    <style>
+      :root {
+        --ink: #0c0f14;
+        --panel: #141922;
+        --panel-2: #1b2230;
+        --line: #232c3b;
+        --txt: #e7ecf3;
+        --dim: #8a97a9;
+        --faint: #5b6678;
+        --money: #f2a23c;   /* warm: spend / value moving */
+        --ok: #36c6a0;      /* cold: cleared / settled */
+        --stop: #f2545b;    /* blocked / halted */
+        --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Mono", Menlo, monospace;
+        --sans: ui-sans-serif, system-ui, "Segoe UI", Inter, sans-serif;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; background: var(--ink); color: var(--txt);
+        font-family: var(--sans); font-size: 14px; line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+      }
+      .wrap { max-width: 1180px; margin: 0 auto; padding: 18px 22px 60px; }
+
+      header {
+        display: flex; align-items: center; gap: 18px;
+        padding-bottom: 16px; border-bottom: 1px solid var(--line);
+      }
+      .mark { display: flex; flex-direction: column; gap: 2px; }
+      .mark b { font-size: 17px; letter-spacing: -0.02em; font-weight: 600; }
+      .mark b span { color: var(--money); }
+      .mark small { color: var(--dim); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; }
+      .conn { display: flex; align-items: center; gap: 7px; color: var(--dim); font-family: var(--mono); font-size: 12px; }
+      .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
+      .dot.live { background: var(--ok); box-shadow: 0 0 0 3px rgba(54,198,160,.15); }
+      .spacer { flex: 1; }
+
+      /* kill switch */
+      .kill { display: flex; align-items: center; gap: 12px; }
+      .kill .lab { font-family: var(--mono); font-size: 12px; color: var(--dim); }
+      .switch {
+        appearance: none; cursor: pointer; width: 92px; height: 34px;
+        border-radius: 6px; border: 1px solid var(--line); background: var(--panel-2);
+        color: var(--ok); font-family: var(--mono); font-size: 12px; font-weight: 600;
+        letter-spacing: 0.08em; transition: all .15s ease;
+      }
+      .switch[data-halted="true"] {
+        background: var(--stop); border-color: var(--stop); color: #1a0608;
+      }
+
+      .haltbar {
+        display: none; margin: 14px 0 0; padding: 9px 14px; border-radius: 6px;
+        background: rgba(242,84,91,.12); border: 1px solid rgba(242,84,91,.4);
+        color: var(--stop); font-family: var(--mono); font-size: 13px;
+      }
+      .haltbar.on { display: block; }
+
+      .grid { display: grid; grid-template-columns: 300px 1fr; gap: 18px; margin-top: 18px; }
+      @media (max-width: 820px) { .grid { grid-template-columns: 1fr; } }
+
+      .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+      .card h2 { margin: 0 0 12px; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); }
+
+      .spend { font-family: var(--mono); }
+      .spend .big { font-size: 38px; font-weight: 600; color: var(--money); letter-spacing: -0.02em; line-height: 1; }
+      .spend .cap { color: var(--faint); font-size: 14px; }
+      .bar { height: 6px; border-radius: 3px; background: var(--panel-2); margin: 14px 0 4px; overflow: hidden; }
+      .bar > i { display: block; height: 100%; width: 0; background: var(--money); transition: width .4s ease; }
+      .bar.over > i { background: var(--stop); }
+
+      .counters { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line); border-radius: 8px; overflow: hidden; margin-top: 16px; }
+      .counters div { background: var(--panel); padding: 12px; }
+      .counters .n { font-family: var(--mono); font-size: 20px; font-weight: 600; }
+      .counters .k { color: var(--dim); font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; }
+      .counters .flag .n { color: var(--stop); }
+
+      /* tape */
+      .tape { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+      .tape .head, .row { display: grid; grid-template-columns: 78px 1fr 96px 92px 70px 96px; gap: 10px; align-items: center; padding: 9px 14px; }
+      .tape .head { color: var(--faint); font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid var(--line); }
+      .feed { max-height: 460px; overflow-y: auto; }
+      .row { border-bottom: 1px solid var(--line); font-family: var(--mono); font-size: 12.5px; animation: in .25s ease; }
+      .row:last-child { border-bottom: none; }
+      .row.flagged { border-left: 3px solid var(--stop); padding-left: 11px; }
+      @keyframes in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+      .row .merc { color: var(--txt); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .row .res { color: var(--faint); font-size: 11px; }
+      .row .price { color: var(--money); text-align: right; }
+      .row .net { color: var(--dim); font-size: 11px; }
+      .row a { color: var(--ok); text-decoration: none; }
+      .row a:hover { text-decoration: underline; }
+      .badge { font-size: 10.5px; letter-spacing: 0.05em; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; text-align: center; }
+      .b-settled { background: rgba(54,198,160,.14); color: var(--ok); }
+      .b-blocked { background: rgba(242,84,91,.14); color: var(--stop); }
+      .b-challenge, .b-signed, .b-info { background: var(--panel-2); color: var(--dim); }
+      .b-error { background: rgba(242,164,60,.14); color: var(--money); }
+      .empty { padding: 40px 14px; text-align: center; color: var(--faint); font-family: var(--mono); font-size: 13px; }
+
+      .lower { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 18px; }
+      @media (max-width: 820px) { .lower { grid-template-columns: 1fr; } }
+      .merc-row { display: grid; grid-template-columns: 1fr 70px; gap: 10px; align-items: center; padding: 7px 0; font-family: var(--mono); font-size: 12.5px; }
+      .merc-row .mbar { height: 5px; border-radius: 3px; background: var(--panel-2); overflow: hidden; }
+      .merc-row .mbar > i { display: block; height: 100%; background: var(--money); }
+      .merc-row .amt { text-align: right; color: var(--money); }
+
+      label.f { display: block; margin-bottom: 10px; font-size: 12px; color: var(--dim); }
+      label.f input { width: 100%; margin-top: 4px; background: var(--ink); border: 1px solid var(--line); border-radius: 6px; color: var(--txt); padding: 7px 9px; font-family: var(--mono); font-size: 13px; }
+      .apply { margin-top: 4px; background: var(--panel-2); color: var(--txt); border: 1px solid var(--line); border-radius: 6px; padding: 8px 14px; font-family: var(--mono); font-size: 12px; cursor: pointer; }
+      .apply:hover { border-color: var(--dim); }
+      footer { margin-top: 26px; color: var(--faint); font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.03em; }
+      footer span { color: var(--dim); }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <div class="mark">
+          <b><span>x402</span>-watch</b>
+          <small>agent spend control plane</small>
+        </div>
+        <div class="conn"><span class="dot" id="dot"></span><span id="connlabel">connecting…</span></div>
+        <div class="spacer"></div>
+        <div class="kill">
+          <span class="lab">kill switch</span>
+          <button class="switch" id="kill" data-halted="false" onclick="toggleHalt()">ARMED</button>
+        </div>
+      </header>
+
+      <div class="haltbar" id="haltbar">HALTED — agent payment clearance is denied. No further settlements will be authorized until re-armed.</div>
+
+      <div class="grid">
+        <div>
+          <div class="card spend">
+            <h2>spend today</h2>
+            <div><span class="big" id="spent">$0.00</span> <span class="cap" id="cap">/ $5.00</span></div>
+            <div class="bar" id="bar"><i></i></div>
+            <div style="color:var(--faint);font-size:11px;">daily cap</div>
+          </div>
+          <div class="counters">
+            <div><div class="n" id="calls">0</div><div class="k">settled calls</div></div>
+            <div><div class="n" id="lat">—</div><div class="k">avg latency</div></div>
+            <div><div class="n" id="percall">$0.50</div><div class="k">per-call cap</div></div>
+            <div class="flag"><div class="n" id="flagged">0</div><div class="k">flagged</div></div>
+          </div>
+        </div>
+
+        <div class="tape">
+          <div class="head"><div>time</div><div>merchant / resource</div><div>network</div><div>tx</div><div>price</div><div>phase</div></div>
+          <div class="feed" id="feed"><div class="empty">waiting for agent activity…</div></div>
+        </div>
+      </div>
+
+      <div class="lower">
+        <div class="card">
+          <h2>spend by merchant</h2>
+          <div id="merchants"><div class="empty" style="padding:20px 0;">no settlements yet</div></div>
+        </div>
+        <div class="card">
+          <h2>policy</h2>
+          <label class="f">per-call cap (USD)<input id="p_call" type="number" step="0.01" value="0.5" /></label>
+          <label class="f">daily cap (USD)<input id="p_daily" type="number" step="0.5" value="5" /></label>
+          <label class="f">merchant allowlist (comma-separated host, blank = allow all)<input id="p_allow" type="text" placeholder="api.example.com, data.foo.io" /></label>
+          <button class="apply" onclick="applyPolicy()">apply policy</button>
+        </div>
+      </div>
+
+      <footer>read-only observer · never holds keys, never signs · sits beside the agent, not in the payment path · <span>lineage: Conductor</span></footer>
+    </div>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      let dailyCap = 5, perCall = 0.5, flagged = 0, lats = [];
+
+      function fmt(n) { return "$" + Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+      function shortSig(s) { return s ? s.slice(0, 4) + "…" + s.slice(-4) : ""; }
+      function explorer(net, sig) {
+        if (!sig) return null;
+        if ((net || "").startsWith("solana")) {
+          const cluster = net.includes("mainnet") ? "" : "?cluster=devnet";
+          return "https://explorer.solana.com/tx/" + sig + cluster;
+        }
+        return null;
+      }
+
+      function renderSpend(spent) {
+        $("spent").textContent = fmt(spent);
+        $("cap").textContent = "/ " + fmt(dailyCap);
+        const pct = dailyCap ? Math.min(100, (spent / dailyCap) * 100) : 0;
+        $("bar").classList.toggle("over", spent > dailyCap);
+        $("bar").querySelector("i").style.width = pct + "%";
+      }
+      function renderCounters(calls) {
+        $("calls").textContent = calls;
+        $("flagged").textContent = flagged;
+        $("percall").textContent = fmt(perCall);
+        $("lat").textContent = lats.length ? Math.round(lats.reduce((a, b) => a + b, 0) / lats.length) + "ms" : "—";
+      }
+      function renderMerchants(by) {
+        const entries = Object.entries(by || {}).sort((a, b) => b[1].spentUsd - a[1].spentUsd);
+        const max = Math.max(...entries.map((e) => e[1].spentUsd), 0.0001);
+        const el = $("merchants");
+        if (!entries.length) { el.innerHTML = '<div class="empty" style="padding:20px 0;">no settlements yet</div>'; return; }
+        el.innerHTML = entries.map(([host, m]) =>
+          `<div class="merc-row"><div><div>${host}</div><div class="mbar"><i style="width:${(m.spentUsd / max) * 100}%"></i></div></div><div class="amt">${fmt(m.spentUsd)}</div></div>`
+        ).join("");
+      }
+
+      function addRow(e, prepend) {
+        const feed = $("feed");
+        const emptyEl = feed.querySelector(".empty");
+        if (emptyEl) emptyEl.remove();
+        const t = new Date(e.ts).toLocaleTimeString([], { hour12: false });
+        const link = explorer(e.network, e.txSig);
+        const tx = link ? `<a href="${link}" target="_blank" rel="noopener">${shortSig(e.txSig)}</a>` : (e.txSig ? shortSig(e.txSig) : "—");
+        const price = e.priceUsd ? fmt(e.priceUsd) : "—";
+        const row = document.createElement("div");
+        row.className = "row" + (e.flagged ? " flagged" : "");
+        row.innerHTML =
+          `<div style="color:var(--faint)">${t}</div>` +
+          `<div><div class="merc">${e.merchant}</div><div class="res">${e.resource || e.note || ""}</div></div>` +
+          `<div class="net">${e.network || ""}</div>` +
+          `<div>${tx}</div>` +
+          `<div class="price">${price}</div>` +
+          `<div><span class="badge b-${e.phase}">${e.phase}</span></div>`;
+        if (prepend) feed.prepend(row); else feed.appendChild(row);
+        if (e.latencyMs) { lats.push(e.latencyMs); if (lats.length > 50) lats.shift(); }
+      }
+
+      function applySnapshot(s) {
+        dailyCap = s.policy.dailyCapUsd; perCall = s.policy.perCallCapUsd;
+        $("p_call").value = perCall; $("p_daily").value = dailyCap;
+        $("p_allow").value = (s.policy.allowlist || []).join(", ");
+        setHalt(s.halted);
+        flagged = (s.recent || []).filter((e) => e.flagged).length;
+        renderSpend(s.spentUsd); renderCounters(s.calls); renderMerchants(s.byMerchant);
+        $("feed").innerHTML = "";
+        if (!(s.recent && s.recent.length)) $("feed").innerHTML = '<div class="empty">waiting for agent activity…</div>';
+        (s.recent || []).forEach((e) => addRow(e, false));
+        $("feed").scrollTop = $("feed").scrollHeight;
+      }
+
+      function setHalt(halted) {
+        const k = $("kill");
+        k.dataset.halted = String(halted);
+        k.textContent = halted ? "HALTED" : "ARMED";
+        $("haltbar").classList.toggle("on", halted);
+      }
+      async function toggleHalt() {
+        const halted = $("kill").dataset.halted !== "true";
+        await fetch("/api/halt", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ halted }) });
+      }
+      async function applyPolicy() {
+        const body = {
+          perCallCapUsd: Number($("p_call").value),
+          dailyCapUsd: Number($("p_daily").value),
+          allowlist: $("p_allow").value.split(",").map((s) => s.trim()).filter(Boolean),
+        };
+        await fetch("/api/policy", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      }
+
+      const es = new EventSource("/events");
+      es.onopen = () => { $("dot").classList.add("live"); $("connlabel").textContent = "live"; };
+      es.onerror = () => { $("dot").classList.remove("live"); $("connlabel").textContent = "reconnecting…"; };
+      es.onmessage = (m) => {
+        const d = JSON.parse(m.data);
+        if (d.type === "snapshot") return applySnapshot(d);
+        if (d.type === "halt") return setHalt(d.halted);
+        if (d.type === "policy") { dailyCap = d.policy.dailyCapUsd; perCall = d.policy.perCallCapUsd; renderCounters(Number($("calls").textContent)); renderSpend(parseFloat($("spent").textContent.replace(/[$,]/g, "")) || 0); return; }
+        if (d.type === "event") {
+          const e = d.event;
+          if (e.flagged) flagged++;
+          addRow(e, true);
+          if (e.phase === "settled") {
+            renderSpend(d.spentUsd);
+            $("calls").textContent = Number($("calls").textContent) + 1;
+          }
+          renderCounters(Number($("calls").textContent));
+        }
+      };
+    </script>
+  </body>
+</html>
