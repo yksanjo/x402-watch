@@ -1,0 +1,151 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><style>
+  :root{
+    --ink:#0b0e13; --panel:#141922; --panel2:#1b2230; --line:#232c3b;
+    --txt:#e9eef5; --dim:#93a0b2; --faint:#5b6678;
+    --money:#f2a23c; --ok:#36c6a0; --stop:#f2545b; --blue:#5aa6ff;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,monospace;
+    --sans:ui-sans-serif,system-ui,"Segoe UI",Inter,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#000}
+  .sheet{width:1100px;min-height:1424px;background:var(--ink);color:var(--txt);
+    font-family:var(--sans);padding:56px 60px 44px;position:relative;overflow:hidden}
+  .sheet::before{content:"";position:absolute;inset:0;
+    background:radial-gradient(900px 420px at 88% -8%, rgba(242,162,60,.10), transparent 60%);
+    pointer-events:none}
+  .z{position:relative;z-index:1}
+
+  /* header */
+  .head{display:flex;justify-content:space-between;align-items:flex-start;
+    border-bottom:1px solid var(--line);padding-bottom:22px}
+  .logo{font-family:var(--mono);font-size:34px;letter-spacing:.3px}
+  .logo b{color:var(--money)}
+  .tag{font-size:18px;color:var(--txt);margin-top:12px;font-weight:600;line-height:1.35;max-width:560px}
+  .tag .g{color:var(--ok)}
+  .links{font-family:var(--mono);font-size:12.5px;color:var(--dim);text-align:right;line-height:1.9;white-space:nowrap}
+  .links .u{color:var(--money)}
+  .pill{display:inline-block;border:1px solid var(--ok);color:var(--ok);border-radius:6px;
+    padding:3px 9px;font-size:11px;letter-spacing:1px;margin-bottom:8px}
+
+  .kicker{font-family:var(--mono);font-size:12px;letter-spacing:2.5px;color:var(--faint);
+    text-transform:uppercase;margin:30px 0 12px}
+
+  /* gap */
+  .gap{display:flex;gap:26px;align-items:flex-start}
+  .gap .big{font-size:27px;font-weight:800;line-height:1.18;min-width:300px;max-width:330px}
+  .gap .big .o{color:var(--money)} .gap .big .g{color:var(--ok)}
+  .gap p{font-size:14.5px;color:var(--dim);line-height:1.62}
+  .gap p b{color:var(--txt);font-weight:600}
+
+  /* 3 pillars */
+  .cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+  .col{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px 18px}
+  .col .h{font-family:var(--mono);font-size:15px;font-weight:700;letter-spacing:.5px;margin-bottom:9px}
+  .col.see .h{color:var(--money)} .col.bound .h{color:var(--blue)} .col.stop .h{color:var(--stop)}
+  .col p{font-size:13px;color:var(--dim);line-height:1.55}
+
+  /* arch */
+  .arch{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:22px 24px;display:flex;gap:26px;align-items:center}
+  .flow{flex:1;font-family:var(--mono);font-size:13px;color:var(--dim);line-height:2}
+  .flow .step{color:var(--txt)} .flow .o{color:var(--money)} .flow .g{color:var(--ok)} .flow .r{color:var(--stop)}
+  .arch .note{flex:0 0 360px;font-size:13px;color:var(--dim);line-height:1.6;border-left:1px solid var(--line);padding-left:22px}
+  .arch .note b{color:var(--ok)}
+
+  /* why + solana row */
+  .row2{display:grid;grid-template-columns:1.35fr 1fr;gap:16px}
+  .box{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px 20px}
+  .box .h{font-family:var(--mono);font-size:12px;letter-spacing:2px;color:var(--faint);text-transform:uppercase;margin-bottom:11px}
+  .box p{font-size:13.5px;color:var(--dim);line-height:1.6}
+  .box p b{color:var(--txt)} .box .sol{color:var(--ok);font-weight:600}
+  .box.sol-box{border-color:#1f3a33}
+
+  /* ask */
+  .ask{background:linear-gradient(180deg, rgba(242,162,60,.07), rgba(242,162,60,.02));
+    border:1px solid #3a3322;border-radius:12px;padding:22px 24px}
+  .ask .h{font-family:var(--mono);font-size:13px;letter-spacing:2px;color:var(--money);text-transform:uppercase;margin-bottom:14px}
+  .ask ul{list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:10px 30px}
+  .ask li{font-size:13.5px;color:var(--txt);line-height:1.45;padding-left:20px;position:relative}
+  .ask li::before{content:"→";position:absolute;left:0;color:var(--money)}
+  .ask li span{color:var(--dim)}
+
+  .foot{display:flex;justify-content:space-between;align-items:center;margin-top:26px;
+    border-top:1px solid var(--line);padding-top:18px}
+  .who{font-size:13px;color:var(--dim);line-height:1.5}
+  .who b{color:var(--txt)}
+  .foot .brand{font-family:var(--mono);font-size:12px;color:var(--faint)}
+</style></head>
+<body>
+<div class="sheet"><div class="z">
+
+  <div class="head">
+    <div>
+      <div class="logo"><b>x402</b>-watch</div>
+      <div class="tag">The oversight layer for autonomous agents paying over x402.<br>
+        <span class="g">See every payment. Bound it. Stop it.</span> Without ever holding a key.</div>
+    </div>
+    <div class="links">
+      <span class="pill">● LIVE DEMO</span><br>
+      <span class="u">x402.musicailab.com</span><br>
+      <span class="u">github.com/yksanjo/x402-watch</span><br>
+      open-source · MIT · zero-dep Node
+    </div>
+  </div>
+
+  <div class="kicker">The gap</div>
+  <div class="gap">
+    <div class="big">The rail is <span class="o">solved.</span><br>The <span class="g">oversight</span> isn't.</div>
+    <p>x402 lets an agent settle value on its own — pay per call for data, inference, RPC, signals. Coinbase, the x402 Foundation, and the Solana facilitators have made the rail work. The piece still missing is the thing a human keeps <b>next to</b> the agent: a live view of what it's spending, a policy it can't exceed, and a switch that stops it.<br><br>
+    Across the agentic-commerce stack, <b>identity, trust, and spend-control</b> is where the runaway-spend and fraud risk concentrates — and it's the gap between an x402 <b>demo</b> and an x402 <b>deployment</b>.</p>
+  </div>
+
+  <div class="kicker">What it does</div>
+  <div class="cols">
+    <div class="col see"><div class="h">SEE IT</div><p>A live tape of every <b>402 → clear → sign → settle</b>, with running spend, per-merchant breakdown, latency, and the settlement signature linked to the explorer.</p></div>
+    <div class="col bound"><div class="h">BOUND IT</div><p>Per-call and daily USD caps plus a merchant allowlist — evaluated and enforced <b>before</b> the agent signs.</p></div>
+    <div class="col stop"><div class="h">STOP IT</div><p>One kill-switch that denies all clearance instantly. The human's hand stays on the off switch.</p></div>
+  </div>
+
+  <div class="kicker">How it fits — out of the payment path</div>
+  <div class="arch">
+    <div class="flow">
+      <div class="step">1. agent gets <span class="o">402 payment required</span></div>
+      <div class="step">2. agent asks monitor → <span class="g">clear this pay?</span> &nbsp;<span style="color:#5b6678">(caps · allowlist · halt)</span></div>
+      <div class="step">3. if cleared → agent <span class="step">signs + settles on Solana</span></div>
+      <div class="step">4. agent reports each phase → <span class="o">live tape</span> + spend + flags</div>
+      <div class="step" style="color:#5b6678">↳ over-cap / halted → <span class="r">BLOCKED</span> before any signature</div>
+    </div>
+    <div class="note">The monitor is <b>read-only</b> and never holds keys or signs. If it's down, payments still settle — you just lose oversight. So adding x402-watch <b>never makes the rail less reliable</b>. The honest failure mode for an observability layer.</div>
+  </div>
+
+  <div class="kicker">Why it matters for x402</div>
+  <div class="row2">
+    <div class="box">
+      <div class="h">Spend-control is the adoption unlock</div>
+      <p>An agent with a funded wallet and an x402 client can spend with no human in the loop — that's the point, and the exposure. x402-watch makes that <b>supervisable without slowing the agent</b>, so teams can let agents transact at higher value and volume. Safety isn't a tax on the rail; it's what takes x402 from demo to production.</p>
+    </div>
+    <div class="box sol-box">
+      <div class="h">Built on Solana</div>
+      <p>Real mode settles <b class="sol">USDC on Solana</b> through a facilitator via <b>@x402/fetch · @x402/svm · @x402/express</b> — sub-cent fees, ~400ms finality. The demo runs simulated settlement so it's always live; the trust layer (clearance, caps, flags, halt) is <b>fully real</b>.</p>
+    </div>
+  </div>
+
+  <div class="kicker">The ask — to the x402 team</div>
+  <div class="ask">
+    <div class="h">Where you come in</div>
+    <ul>
+      <li>Feedback on the spend-control model <span>& the SDK surface we wired against</span></li>
+      <li>Make x402-watch a <b>reference oversight integration</b> <span>for x402 on Solana</span></li>
+      <li>Ecosystem listing <span>so agent builders find the off-switch</span></li>
+      <li>Reference-integration grant <span>or design partnership</span></li>
+    </ul>
+  </div>
+
+  <div class="foot">
+    <div class="who"><b>Yoshi Kondo</b> — Head of Global BD, Soundraw · 15+ yrs complex multi-party deals · Solana payments.<br>A BD leader who ships. &nbsp;·&nbsp; yksanjo@gmail.com</div>
+    <div class="brand">read-only · never signs · lineage: Conductor</div>
+  </div>
+
+</div></div>
+</body></html>
