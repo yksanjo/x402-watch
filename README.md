@@ -32,7 +32,32 @@ Across the agentic-commerce stack, the payment rail is being commoditized fast, 
                                   human watches the dashboard, flips the kill-switch
 ```
 
-The monitor is out of the payment path entirely. If it's down, the agent's payments still work — it just loses oversight, which is the honest failure mode for an observability layer.
+The monitor is out of the payment path entirely — it observes and clears, it never signs.
+
+## Use it with your real agent (3 lines)
+
+The piece that makes oversight *enforced* rather than advisory is `watch()` — a wrapper for your paying fetch where **a denied payment can never reach the signer**:
+
+```js
+import { watch, PaymentBlockedError } from "x402-watch";
+import { wrapFetchWithPayment } from "@x402/fetch";
+
+const paidFetch = wrapFetchWithPayment(fetch, signer); // your existing setup
+const guarded   = watch({ payingFetch: paidFetch });   // + supervision
+// use `guarded` wherever you used `paidFetch` — that's it
+```
+
+`watch()` probes each request with a plain (non-paying) fetch first. On a `402` it parses the payment requirements, asks the monitor for clearance against your caps/allowlist/kill-switch, and only then invokes the paying fetch. Denials throw `PaymentBlockedError` — the signer is never called. See `examples/guarded-agent.js`.
+
+**Fail-closed by default**: if the monitor is unreachable, payments are denied. That's the correct default for a control layer. Pass `failOpen: true` for observability-only semantics (payments proceed unwatched when the monitor is down).
+
+These guarantees are proven by no-mock tests (`npm test`): a real monitor process and a real x402-style merchant over real HTTP — blocked payments never pay, controls survive a monitor restart, unparseable 402s are never paid blind.
+
+## Durable controls & alerts
+
+- The kill-switch and policy persist to `data/state.json`, and every event appends to `data/events.jsonl`. A restart can't silently re-arm a halted fleet or forget today's spend.
+- The daily cap is a real **UTC-day window** — counters roll over at midnight UTC.
+- Set `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` to get pinged on every blocked payment, flagged settlement, and halt toggle.
 
 ## Quickstart (demo, no wallet needed)
 
