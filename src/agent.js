@@ -65,19 +65,21 @@ async function clear(task) {
 }
 
 // --- real settlement (Solana devnet via x402) -----------------------------
-// Wired against @x402/fetch + @x402/svm (v2.14.x). Because the x402 SDK surface
-// moves quickly, confirm the signer/wrap calls against the installed package
-// README before relying on this in production.
+// Verified against the installed @x402/* v2.14.0: the signer is a @solana/kit
+// TransactionSigner (NOT a web3.js Keypair), schemes register onto an
+// x402Client, and wrapFetchWithPayment takes that client.
 let wrapped = null;
 async function getRealFetch() {
   if (wrapped) return wrapped;
-  const { wrapFetchWithPayment } = await import("@x402/fetch");
-  const { createSvmSigner } = await import("@x402/svm");
-  const { Keypair } = await import("@solana/web3.js");
+  const { wrapFetchWithPayment, x402Client } = await import("@x402/fetch");
+  const { registerExactSvmScheme } = await import("@x402/svm/exact/client");
+  const { createKeyPairSignerFromBytes } = await import("@solana/kit");
   const secret = JSON.parse(process.env.SOLANA_SECRET_KEY || "[]");
   if (!secret.length) throw new Error("set SOLANA_SECRET_KEY (devnet keypair JSON array)");
-  const signer = createSvmSigner(Keypair.fromSecretKey(Uint8Array.from(secret)));
-  wrapped = wrapFetchWithPayment(fetch, signer);
+  const signer = await createKeyPairSignerFromBytes(Uint8Array.from(secret));
+  const client = new x402Client();
+  registerExactSvmScheme(client, { signer });
+  wrapped = wrapFetchWithPayment(fetch, client);
   return wrapped;
 }
 

@@ -56,23 +56,28 @@ async function snapshot() {
   return (await fetch(`${MONITOR}/api/snapshot`)).json();
 }
 
-// A real x402-style merchant: 402 with payment requirements until an
-// X-PAYMENT header arrives, then 200 + x-payment-response (like a facilitator
-// settlement receipt). priceUsd comes from the path so tests control it.
+// A real x402-style merchant speaking the verified v2.14 wire format:
+// requirements base64-encoded in a PAYMENT-REQUIRED header with `amount` in
+// atomic units, and an EMPTY json body — exactly what @x402/express emits.
+// Pays out 200 + x-payment-response once an X-PAYMENT header arrives.
 function startMerchant() {
   const app = express();
   app.get("/buy/:cents", (req, res) => {
     const usd = Number(req.params.cents) / 100;
     if (!req.headers["x-payment"]) {
-      return res.status(402).json({
+      const requirements = {
+        x402Version: 2,
+        error: "Payment required",
         accepts: [{
           scheme: "exact",
-          maxAmountRequired: String(Math.round(usd * 1e6)), // USDC atomic units
-          extra: { decimals: 6 },
+          amount: String(Math.round(usd * 1e6)), // USDC atomic units
+          asset: "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
           payTo: "TESTPAYTO11111111111111111111111111111111",
-          network: "solana-devnet",
+          network: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
         }],
-      });
+      };
+      res.setHeader("PAYMENT-REQUIRED", Buffer.from(JSON.stringify(requirements)).toString("base64"));
+      return res.status(402).json({});
     }
     payCalls++;
     res.setHeader(
@@ -105,7 +110,8 @@ after(() => {
   merchantServer?.close();
 });
 
-test("parse402 reads v2 accepts (atomic units) and price-string fallback", () => {
+test("parse402 reads v2 `amount`, legacy `maxAmountRequired`, and price-string", () => {
+  assert.equal(parse402({ accepts: [{ amount: "50000" }] }).priceUsd, 0.05); // real v2.14 shape
   assert.equal(
     parse402({ accepts: [{ maxAmountRequired: "50000", extra: { decimals: 6 } }] }).priceUsd,
     0.05

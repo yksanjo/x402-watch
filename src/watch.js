@@ -35,17 +35,21 @@ export class PaymentBlockedError extends Error {
 }
 
 // Parse an x402 402 response into { priceUsd, payTo, network, raw }.
-// Tolerant across SDK versions: tries the v2 JSON body `accepts` array
-// (maxAmountRequired in atomic units of the asset) and falls back to a
-// human `price` field like "$0.05". Returns null if unparseable.
+// Tolerant across SDK versions. Verified against @x402/* v2.14.0, where the
+// requirements arrive base64-encoded in a PAYMENT-REQUIRED header (the JSON
+// body is empty!) with the price in `amount` (atomic units of the asset);
+// older shapes put `accepts` in the body with `maxAmountRequired` or a human
+// `price` string. Returns null if unparseable.
 export function parse402(body) {
   try {
     const accepts = body?.accepts?.[0] ?? body?.paymentRequirements?.[0];
     if (!accepts) return null;
     let priceUsd = null;
-    if (accepts.maxAmountRequired != null) {
-      const decimals = Number(accepts.extra?.decimals ?? 6); // USDC default
-      priceUsd = Number(accepts.maxAmountRequired) / 10 ** decimals;
+    const atomic = accepts.amount ?? accepts.maxAmountRequired;
+    if (atomic != null) {
+      // USDC (the x402 default asset) has 6 decimals on every network
+      const decimals = Number(accepts.extra?.decimals ?? 6);
+      priceUsd = Number(atomic) / 10 ** decimals;
     } else if (typeof accepts.price === "string") {
       priceUsd = Number(accepts.price.replace(/[^0-9.]/g, ""));
     } else if (typeof accepts.price === "number") {
@@ -61,6 +65,17 @@ export function parse402(body) {
   } catch {
     return null;
   }
+}
+
+// Pull the payment requirements out of a 402 Response: the v2 header first
+// (PAYMENT-REQUIRED, base64 JSON), then the response body as a fallback.
+export async function requirementsFrom402(res) {
+  const header = res.headers.get("payment-required");
+  if (header) {
+    try { return JSON.parse(Buffer.from(header, "base64").toString("utf8")); } catch {}
+  }
+  try { return await res.clone().json(); } catch {}
+  return null;
 }
 
 export function watch({
@@ -110,10 +125,8 @@ export function watch({
     const probe = await plainFetch(url, init);
     if (probe.status !== 402) return probe;
 
-    // 2. parse what the merchant wants
-    let body = null;
-    try { body = await probe.clone().json(); } catch {}
-    const want = parse402(body);
+    // 2. parse what the merchant wants (v2 header or body)
+    const want = parse402(await requirementsFrom402(probe));
     const u = new URL(typeof url === "string" ? url : url.url);
     const task = {
       id: `w${++taskSeq}`,

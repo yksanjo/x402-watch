@@ -1,7 +1,7 @@
 // The real integration: take an existing x402 agent and put its spend under
 // supervision in 3 lines. Everything else in this file is a normal agent.
 //
-//   npm i @x402/fetch @x402/svm @solana/web3.js
+//   npm i @x402/fetch @x402/svm @solana/kit
 //   MONITOR_URL=http://localhost:4040 SOLANA_SECRET_KEY='[...]' node examples/guarded-agent.js
 //
 // Guarantees (proven by test/watch.test.js):
@@ -11,16 +11,19 @@
 //   - every lifecycle phase lands on the live tape at the monitor dashboard
 
 import { watch, PaymentBlockedError } from "../src/watch.js";
-import { wrapFetchWithPayment } from "@x402/fetch";
-import { createSvmSigner } from "@x402/svm";
-import { Keypair } from "@solana/web3.js";
+import { wrapFetchWithPayment, x402Client } from "@x402/fetch";
+import { registerExactSvmScheme } from "@x402/svm/exact/client";
+import { createKeyPairSignerFromBytes } from "@solana/kit";
 
-const signer = createSvmSigner(
-  Keypair.fromSecretKey(Uint8Array.from(JSON.parse(process.env.SOLANA_SECRET_KEY)))
+// verified against @x402/* v2.14.0: kit signer + scheme registered on a client
+const signer = await createKeyPairSignerFromBytes(
+  Uint8Array.from(JSON.parse(process.env.SOLANA_SECRET_KEY))
 );
+const client = new x402Client();
+registerExactSvmScheme(client, { signer });
 
 // ---- the 3 lines ----------------------------------------------------------
-const paidFetch = wrapFetchWithPayment(fetch, signer); // your existing setup
+const paidFetch = wrapFetchWithPayment(fetch, client); // your existing setup
 const guarded = watch({ payingFetch: paidFetch });     // + supervision
 // use `guarded` wherever you used `paidFetch`                    (that's it)
 // ---------------------------------------------------------------------------
