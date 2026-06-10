@@ -240,8 +240,9 @@
         renderSpend(s.spentUsd); renderCounters(s.calls); renderMerchants(s.byMerchant);
         $("feed").innerHTML = "";
         if (!(s.recent && s.recent.length)) $("feed").innerHTML = '<div class="empty">waiting for agent activity…</div>';
-        (s.recent || []).forEach((e) => addRow(e, false));
-        $("feed").scrollTop = $("feed").scrollHeight;
+        // newest first, matching the live prepend — new rows must land in view
+        (s.recent || []).slice().reverse().forEach((e) => addRow(e, false));
+        $("feed").scrollTop = 0;
       }
 
       function setHalt(halted) {
