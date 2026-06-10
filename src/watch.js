@@ -165,15 +165,29 @@ export function watch({
     const t0 = Date.now();
     try {
       const res = await payingFetch(url, init);
+      // a second 402 means the payment FAILED at the facilitator (e.g.
+      // transaction_simulation_failed) — never report that as settled
+      if (res.status === 402) {
+        let detail = "";
+        try {
+          const hdr = res.headers.get("payment-required");
+          if (hdr) detail = JSON.parse(Buffer.from(hdr, "base64").toString("utf8")).error ?? "";
+        } catch {}
+        report("error", task, { note: `payment rejected: ${detail || "402 after payment attempt"}` });
+        throw new PaymentBlockedError("payment_rejected", { url: u.href, facilitatorError: detail });
+      }
+      // v2 receipt: base64 JSON in the PAYMENT-RESPONSE header
+      // { success, payer, transaction, network }
       let txSig = null;
       try {
-        const payResp = res.headers.get("x-payment-response");
-        if (payResp) txSig = JSON.parse(Buffer.from(payResp, "base64").toString()).transaction ?? null;
+        const receipt = res.headers.get("payment-response") ?? res.headers.get("x-payment-response");
+        if (receipt) txSig = JSON.parse(Buffer.from(receipt, "base64").toString("utf8")).transaction ?? null;
       } catch {}
       report("settled", task, { txSig, latencyMs: Date.now() - t0, note: `${res.status} resource delivered` });
       return res;
     } catch (err) {
-      report("error", task, { note: String(err?.message || err).slice(0, 120) });
+      if (!(err instanceof PaymentBlockedError))
+        report("error", task, { note: String(err?.message || err).slice(0, 120) });
       throw err;
     }
   };

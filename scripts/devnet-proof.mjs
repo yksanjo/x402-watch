@@ -94,7 +94,7 @@ console.log("\n[1/3] under-cap purchase ($0.05, cap $0.10) — should settle on 
 const t0 = Date.now();
 const res = await guarded(url);
 const body = await res.json();
-const payResp = res.headers.get("x-payment-response");
+const payResp = res.headers.get("payment-response") ?? res.headers.get("x-payment-response");
 const txSig = payResp ? JSON.parse(Buffer.from(payResp, "base64").toString()).transaction : null;
 results.settled = { status: res.status, txSig, latencyMs: Date.now() - t0, body };
 console.log(`    settled in ${results.settled.latencyMs}ms -> ${txSig ? explorer(txSig) : "(no sig in response)"}`);

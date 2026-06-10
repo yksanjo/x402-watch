@@ -80,9 +80,10 @@ function startMerchant() {
       return res.status(402).json({});
     }
     payCalls++;
+    // real v2.14 receipt header (no x- prefix)
     res.setHeader(
-      "x-payment-response",
-      Buffer.from(JSON.stringify({ transaction: "TESTSIG" + "1".repeat(80) })).toString("base64")
+      "PAYMENT-RESPONSE",
+      Buffer.from(JSON.stringify({ success: true, transaction: "TESTSIG" + "1".repeat(80) })).toString("base64")
     );
     res.json({ data: "the goods", usd });
   });
@@ -210,6 +211,36 @@ test("monitor unreachable: fail-CLOSED by default, fail-open only if asked", asy
   const r = await guardedOpen(buyUrl(1));
   assert.equal(r.status, 200);
   assert.equal(payCalls, before + 1, "failOpen lets payment through unwatched");
+});
+
+test("facilitator rejection (second 402) is an error, never reported settled", async () => {
+  // a merchant whose "payment" path still returns 402 — like a facilitator
+  // failing simulation (e.g. destination token account doesn't exist)
+  const app = express();
+  app.get("/reject", (req, res) => {
+    const requirements = {
+      x402Version: 2,
+      error: req.headers["x-payment"] ? "transaction_simulation_failed" : "Payment required",
+      accepts: [{ scheme: "exact", amount: "10000", payTo: "T", network: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1" }],
+    };
+    res.setHeader("PAYMENT-REQUIRED", Buffer.from(JSON.stringify(requirements)).toString("base64"));
+    res.status(402).json({});
+  });
+  const srv = await new Promise((res) => { const s = app.listen(0, () => res(s)); });
+  const port = srv.address().port;
+  const guarded = watch({ payingFetch, monitor: MONITOR });
+  await assert.rejects(() => guarded(`http://localhost:${port}/reject`), (err) => {
+    assert.ok(err instanceof PaymentBlockedError);
+    assert.equal(err.reason, "payment_rejected");
+    assert.equal(err.details.facilitatorError, "transaction_simulation_failed");
+    return true;
+  });
+  await sleep(300);
+  const s = await snapshot();
+  const last = s.recent.filter((e) => e.merchant === `localhost:${port}`);
+  assert.equal(last.some((e) => e.phase === "error"), true);
+  assert.equal(last.some((e) => e.phase === "settled"), false, "rejection must never appear settled");
+  srv.close();
 });
 
 test("unparseable 402 is never paid blind", async () => {

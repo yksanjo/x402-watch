@@ -88,7 +88,8 @@ async function settleReal(task) {
   const url = process.env.RESOURCE_URL || `http://localhost:4021${task.resource.split(" ")[1] || "/"}`;
   const t0 = Date.now();
   const res = await f(url, { method: task.resource.split(" ")[0] || "GET" });
-  const payResp = res.headers.get("x-payment-response");
+  // v2 receipt lives in the PAYMENT-RESPONSE header (x- prefix = older SDKs)
+  const payResp = res.headers.get("payment-response") ?? res.headers.get("x-payment-response");
   let txSig = null;
   try { txSig = payResp ? JSON.parse(Buffer.from(payResp, "base64").toString()).transaction : null; } catch {}
   return { txSig, latencyMs: Date.now() - t0 };
